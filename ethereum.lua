@@ -465,7 +465,7 @@ function devp2p.dissector (tvb, pinfo, tree)
     ---- 协议细节
     local decodedvalue = rlp_decode(string.fromhex(tostring(payload:bytes())))
     local payloadtree = tree:add(subtree, tvb())
-    message(decodedvalue)
+    --message(decodedvalue)
 
     if types[ptype] == "PING" then
         payloadtree:set_text(decodedvalue)
@@ -479,10 +479,22 @@ function devp2p.dissector (tvb, pinfo, tree)
     elseif types[ptype] == "PONG" then
         payloadtree:set_text(decodedvalue)
         local toip,toudpport,totcpport,replyhash, expiration = string.match(decodedvalue, '%[%[([^,]+), ([^,]+), ([^%]]+)%], ([^,]+), ([^%]]+)%]')
-        payloadtree:add("To:", string.toip(string.remove_quoted(toip)), string.toport(string.remove_quoted(toudpport)), string.toport(string.remove_quoted(totcpport)))
+        if toip == nil
+        then
+            -- Try it without the totcpport field.
+            toip,toudpport,replyhash, expiration = string.match(decodedvalue, '%[%[([^,]+), ([^%]]+)%], ([^,]+), ([^%]]+)%]')
+        end
+        toip_d = string.toip(string.remove_quoted(toip))
+        toudpport_d = string.toport(string.remove_quoted(toudpport))
+        totcpport_d = ''
+        if (totcpport ~= nil)
+        then
+          totcpport_d = string.toport(string.remove_quoted(totcpport))
+        end
+        payloadtree:add("To:", toip_d, toudpport_d, totcpport_d)
         payloadtree:add("Hash:", string.remove_quoted(replyhash))
         payloadtree:add("Expiration:", string.remove_quoted(expiration))
-        payloadtree:set_text("PONG " .. string.toip(string.remove_quoted(toip)) .. ":" .. string.toport(string.remove_quoted(toudpport)) .. "/" ..  string.toport(string.remove_quoted(totcpport)))
+        payloadtree:set_text("PONG " .. toip_d .. ":" .. toudpport_d .. "/" .. totcpport_d)
     elseif types[ptype] == "FindNode" then
         payloadtree:set_text(decodedvalue)
         local hash, expiration = string.match(decodedvalue, '%[([^,]+), ([^%]]+)%]')
